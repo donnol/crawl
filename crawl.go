@@ -39,7 +39,22 @@ func main() {
 	_ = goquery.Document{}
 
 	testCase := []Model{
-		{Name: "taobao", URL: "http://www.taobao.com", Labels: []Label{Label{Route: "div #J_SiteNav a", Attrs: []string{"href"}}}},
+		{Name: "taobao", URL: "http://www.taobao.com", Labels: []Label{
+			Label{
+				Route: "div #J_SiteNav a",
+				Attrs: []string{
+					"href",
+				},
+			},
+			Label{
+				Route: "img",
+				Attrs: []string{
+					"src",
+				},
+				Loop: true,
+			},
+		},
+	},
 	}
 	for _, m := range testCase {
 		c <- m
