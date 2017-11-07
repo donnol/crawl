@@ -31,30 +31,40 @@ func init() {
 
 	for i := 0; i < config.NumWorker; i++ {
 		go run(i)
-		fmt.Printf("init %d complete.\n", i)
+		log.Printf("init No.%d worker.\n", i)
 	}
+
+	log.Printf("init completed.\n\n")
 }
 
 func main() {
 	_ = goquery.Document{}
 
 	testCase := []Model{
-		{Name: "taobao", URL: "http://www.taobao.com", Labels: []Label{
-			Label{
-				Route: "div #J_SiteNav a",
-				Attrs: []string{
-					"href",
+		{
+			Name: "taobao", URL: "http://www.taobao.com", Labels: []Label{
+				Label{
+					Route: "div #J_SiteNav a",
+					Attrs: []string{
+						"href",
+					},
 				},
-			},
-			Label{
-				Route: "img",
-				Attrs: []string{
-					"src",
+				Label{
+					Route: "img",
+					Attrs: []string{
+						"src",
+					},
+					Flag: "all",
 				},
-				Loop: true,
+				Label{
+					Route: ".screen-outer .service-bd li a",
+					Attrs: []string{
+						"href",
+					},
+					Flag: "list",
+				},
 			},
 		},
-	},
 	}
 	for _, m := range testCase {
 		c <- m
@@ -75,7 +85,7 @@ type Model struct {
 type Label struct {
 	Route string   // 标签路径
 	Attrs []string // 属性
-	Loop  bool     // 遍历
+	Flag  string   // all: 所有标签；list: 标签列表
 }
 
 func (m Model) Work(id int) error {
@@ -84,19 +94,44 @@ func (m Model) Work(id int) error {
 		return err
 	}
 
-	for _, label := range m.Labels {
-		sel := doc.Find(label.Route)
-		for _, attr := range label.Attrs {
-			attrValue, ok := sel.Attr(attr)
+	findAttr := func(s *goquery.Selection, attrs []string) error {
+		for _, attr := range attrs {
+			attrValue, ok := s.Attr(attr)
 			if !ok {
-				htmlContent, err := sel.Html()
+				htmlContent, err := s.Html()
 				if err != nil {
 					return err
 				}
-				log.Printf("count find %s, %s, %s\n", label.Route, attr, htmlContent)
+				log.Printf("count find %s, %s\n", attr, htmlContent)
 				continue
 			}
 			fmt.Println(attrValue)
+		}
+		return nil
+	}
+	for _, label := range m.Labels {
+		sel := doc.Find(label.Route)
+		// selHtml, err := sel.Html()
+		// if err != nil {
+		// 	log.Fatal(err)
+		// }
+		// fmt.Println(selHtml)
+
+		// 列表查找
+		if label.Flag == "list" {
+			sel.Each(func(i int, s *goquery.Selection) {
+				err = findAttr(s, label.Attrs)
+				if err != nil {
+					log.Println(err)
+				}
+			})
+		} else if label.Flag == "all" {
+			// TODO
+		} else {
+			err = findAttr(sel, label.Attrs)
+			if err != nil {
+				log.Println(err)
+			}
 		}
 	}
 
