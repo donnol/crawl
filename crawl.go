@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"regexp"
 
 	"github.com/PuerkitoBio/goquery"
 )
@@ -51,10 +52,8 @@ func main() {
 				},
 				Label{
 					Route: "img",
-					Attrs: []string{
-						"src",
-					},
-					Flag: "all",
+					Attrs: []string{},
+					Flag:  "all",
 				},
 				Label{
 					Route: ".screen-outer .service-bd li a",
@@ -98,11 +97,11 @@ func (m Model) Work(id int) error {
 		for _, attr := range attrs {
 			attrValue, ok := s.Attr(attr)
 			if !ok {
-				htmlContent, err := s.Html()
+				_, err := s.Html()
 				if err != nil {
 					return err
 				}
-				log.Printf("count find %s, %s\n", attr, htmlContent)
+				// log.Printf("count find %s, %s\n", attr, htmlContent)
 				continue
 			}
 			fmt.Println(attrValue)
@@ -126,7 +125,35 @@ func (m Model) Work(id int) error {
 				}
 			})
 		} else if label.Flag == "all" {
-			// TODO
+			// sel.Each(func(i int, s *goquery.Selection) {
+			// 	fmt.Printf("%#v\n", s)
+			// 	for _, node := range s.Nodes {
+			// 		fmt.Printf("%#v\n", node)
+			// 		if node.Type == html.ElementNode && node.Data == label.Route {
+			// 			for _, element := range node.Attr {
+			// 				if element.Key == "src" {
+			// 					fmt.Println(element.Val)
+			// 				}
+			// 				if element.Key == "data-original" {
+			// 					fmt.Println(element.Val)
+			// 				}
+			// 			}
+			// 		}
+			// 	}
+			// 	return
+			// })
+			docHtml, err := doc.Html()
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Println(docHtml)
+			var imgRE = regexp.MustCompile(`<img[^>]+\bsrc=["']([^"']+)["']`)
+			imgs := imgRE.FindAllStringSubmatch(docHtml, -1)
+			out := make([]string, len(imgs))
+			for i := range out {
+				out[i] = imgs[i][1]
+			}
+			fmt.Println(out)
 		} else {
 			err = findAttr(sel, label.Attrs)
 			if err != nil {
