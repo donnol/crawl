@@ -26,16 +26,22 @@ page.open(server, function (status) {
 
     // 异步拉取数据的网站，需要等待一断时间后再去操作dom，时间长短由网站大小决定
     setTimeout(function () {
-        var result = page.evaluate(function () {
-            // 如果页面采用了懒加载：2，滚动到底部
-            // window.scrollTo(0, 10000);
+        // var result = page.evaluate(function () {
+        // 如果页面采用了懒加载：2，滚动到底部
+        // window.scrollTo(0, 10000);
 
-            return document.title;
-        });
-        console.log(result);
+        // 点击‘加载更多’
+        // document.getElementsByClassName('get-more-line').click();
+        // 
+        //     return document.title;
+        // });
+        // console.log(result);
+
         console.log(page.content);
+
         //生成当前页面截图
-        page.render("snapshot.png");
+        // page.render("snapshot.png");
+
         phantom.exit();
-    }, 10000);
+    }, 15000);
 });

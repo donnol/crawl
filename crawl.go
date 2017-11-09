@@ -1,12 +1,15 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"log"
 	"os"
 	"os/signal"
 	"regexp"
+
+	"golang.org/x/net/html"
 
 	"github.com/PuerkitoBio/goquery"
 )
@@ -16,10 +19,6 @@ var c chan Worker
 type Config struct {
 	NumWorker int
 	LenQueue  int
-}
-
-type Worker interface {
-	Work(id int) error
 }
 
 func init() {
@@ -39,11 +38,9 @@ func init() {
 }
 
 func main() {
-	_ = goquery.Document{}
-
 	testCase := []Model{
 		{
-			Name: "taobao", URL: "http://www.taobao.com", Labels: []Label{
+			Name: "taobao", URL: "http://www.taobao.com", Dynamic: true, Labels: []Label{
 				Label{
 					Route: "div #J_SiteNav a",
 					Attrs: []string{
@@ -76,9 +73,10 @@ func main() {
 }
 
 type Model struct {
-	Name   string
-	URL    string // 链接
-	Labels []Label
+	Name    string
+	URL     string // 链接
+	Dynamic bool   // 动态网站
+	Labels  []Label
 }
 
 type Label struct {
@@ -88,9 +86,22 @@ type Label struct {
 }
 
 func (m Model) Work(id int) error {
-	doc, err := goquery.NewDocument(m.URL)
-	if err != nil {
-		return err
+	var doc *goquery.Document
+	var err error
+	if m.Dynamic {
+		content, err := phantom(m.URL)
+		if err != nil {
+			return err
+		}
+		doc, err = goquery.NewDocumentFromReader(bytes.NewReader(content))
+		if err != nil {
+			return err
+		}
+	} else {
+		doc, err = goquery.NewDocument(m.URL)
+		if err != nil {
+			return err
+		}
 	}
 
 	findAttr := func(s *goquery.Selection, attrs []string) error {
@@ -125,35 +136,23 @@ func (m Model) Work(id int) error {
 				}
 			})
 		} else if label.Flag == "all" {
-			// sel.Each(func(i int, s *goquery.Selection) {
-			// 	fmt.Printf("%#v\n", s)
-			// 	for _, node := range s.Nodes {
-			// 		fmt.Printf("%#v\n", node)
-			// 		if node.Type == html.ElementNode && node.Data == label.Route {
-			// 			for _, element := range node.Attr {
-			// 				if element.Key == "src" {
-			// 					fmt.Println(element.Val)
-			// 				}
-			// 				if element.Key == "data-original" {
-			// 					fmt.Println(element.Val)
-			// 				}
-			// 			}
-			// 		}
-			// 	}
-			// 	return
-			// })
-			docHtml, err := doc.Html()
-			if err != nil {
-				log.Fatal(err)
-			}
-			fmt.Println(docHtml)
-			var imgRE = regexp.MustCompile(`<img[^>]+\bsrc=["']([^"']+)["']`)
-			imgs := imgRE.FindAllStringSubmatch(docHtml, -1)
-			out := make([]string, len(imgs))
-			for i := range out {
-				out[i] = imgs[i][1]
-			}
-			fmt.Println(out)
+			sel.Each(func(i int, s *goquery.Selection) {
+				// fmt.Printf("%#v\n", s)
+				for _, node := range s.Nodes {
+					// fmt.Printf("%#v\n", node)
+					if node.Type == html.ElementNode && node.Data == label.Route {
+						for _, element := range node.Attr {
+							if element.Key == "src" {
+								fmt.Println(element.Val)
+							}
+							if element.Key == "data-original" {
+								fmt.Println(element.Val)
+							}
+						}
+					}
+				}
+				return
+			})
 		} else {
 			err = findAttr(sel, label.Attrs)
 			if err != nil {
@@ -165,11 +164,13 @@ func (m Model) Work(id int) error {
 	return nil
 }
 
-func run(i int) {
-	for w := range c {
-		err := w.Work(i)
-		if err != nil {
-			log.Println(i, err)
-		}
+func regexpFind(docHtml string) []string {
+	var imgRE = regexp.MustCompile(`<img[^>]+\bsrc=["']([^"']+)["']`)
+	imgs := imgRE.FindAllStringSubmatch(docHtml, -1)
+	out := make([]string, len(imgs))
+	for i := range out {
+		out[i] = imgs[i][1]
 	}
+	// fmt.Println(out)
+	return out
 }
