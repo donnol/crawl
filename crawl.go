@@ -29,10 +29,7 @@ func init() {
 
 	c = make(chan Worker, config.LenQueue)
 
-	for i := 0; i < config.NumWorker; i++ {
-		go run(i)
-		log.Printf("init No.%d worker.\n", i)
-	}
+	run(config.NumWorker)
 
 	log.Printf("init completed.\n\n")
 }
