@@ -22,6 +22,13 @@ page.viewportSize = {
 page.settings.userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36";
 page.settings.encoding = "utf8"; //"GBK";
 
+page.onResourceRequested = function (request) {
+    console.log('Request ' + JSON.stringify(request, undefined, 4));
+};
+page.onResourceReceived = function (response) {
+    console.log('Receive ' + JSON.stringify(response, undefined, 4));
+};
+
 page.open(server, function (status) {
 
     // 异步拉取数据的网站，需要等待一断时间后再去操作dom，时间长短由网站大小决定
@@ -37,11 +44,11 @@ page.open(server, function (status) {
         // });
         // console.log(result);
 
-        console.log(page.content);
+        // console.log(page.content);
 
         //生成当前页面截图
         // page.render("snapshot.png");
 
         phantom.exit();
-    }, 15000);
+    }, 1000);
 });
