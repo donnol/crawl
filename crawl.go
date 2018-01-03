@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -9,9 +10,8 @@ import (
 	"os/signal"
 	"regexp"
 
-	"golang.org/x/net/html"
-
 	"github.com/PuerkitoBio/goquery"
+	"golang.org/x/net/html"
 )
 
 var c chan Worker
@@ -31,13 +31,14 @@ func init() {
 
 	run(config.NumWorker)
 
+	log.SetFlags(log.Lshortfile | log.LstdFlags)
 	log.Printf("init completed.\n\n")
 }
 
 func main() {
 	testCase := []Model{
-		{
-			Name: "taobao", URL: "http://www.taobao.com", Dynamic: true, Labels: []Label{
+		Model{
+			Name: "taobao", URL: "https://www.taobao.com", Dynamic: true, Labels: []Label{
 				Label{
 					Route: "div #J_SiteNav a",
 					Attrs: []string{
@@ -55,6 +56,18 @@ func main() {
 						"href",
 					},
 					Flag: "list",
+				},
+			},
+		},
+		Model{
+			Name: "wenku", URL: "https://wenku.baidu.com/view/197534bd011ca300a7c39019", Dynamic: true, Labels: []Label{
+				Label{
+					Route: "#WkDialogDownDoc.dialog-container.dialog-org.border-none.dialog-top.doc-title",
+				},
+				Label{
+					Route: ".reader-word-layer", //.reader-word-s1-0.reader-word-s1-2
+					Attrs: []string{},
+					Flag:  "all",
 				},
 			},
 		},
@@ -86,9 +99,14 @@ func (m Model) Work(id int) error {
 	var doc *goquery.Document
 	var err error
 	if m.Dynamic {
+		log.Println("=== begin phantom.")
 		content, err := phantom(m.URL)
 		if err != nil {
 			return err
+		}
+		fmt.Printf("content is: %s\n", content)
+		if len(content) == 0 {
+			return errors.New("empty content.")
 		}
 		doc, err = goquery.NewDocumentFromReader(bytes.NewReader(content))
 		if err != nil {
